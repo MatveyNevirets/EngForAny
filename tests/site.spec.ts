@@ -53,6 +53,8 @@ test('visual layout and complete demo booking journey', async ({ page }, testInf
   await expect(page.locator('.mobile-booking')).not.toHaveClass(/is-shown/);
   await page.locator('#lead-phone').fill('8 (999) 000-00-00');
   await page.locator('#lead-phone').blur();
+  await expect(page.locator('#lead-consent')).not.toBeChecked();
+  await page.locator('#lead-consent').check();
   await page.locator('.booking-grid').screenshot({ path: `artifacts/qa/${testInfo.project.name}-form.png`, animations: 'disabled', style: '.site-header,.mobile-booking,.skip-link{visibility:hidden!important}' });
 
   // One transient delivery error: values must survive and retry must work.
@@ -86,20 +88,27 @@ test('visual layout and complete demo booking journey', async ({ page }, testInf
   await expect(page.locator('.floating-sticker')).toHaveCSS('animation-name', 'none');
   await expect(page.locator('html')).toHaveCSS('scroll-behavior', 'auto');
   if ((page.viewportSize()?.width || 0) < 700) await expect(page.locator('.mobile-booking')).toHaveClass(/is-shown/);
-  for (const selector of ['#home', '#programs', '#first-lesson', '.travel-section', '.faq-section', '#booking', '#location', '.site-footer']) {
+  for (const selector of ['#home', '#programs', '#first-lesson', '.travel-section', '.faq-section', '#booking', '#location', '.studio-footer']) {
     await page.locator(selector).scrollIntoViewIfNeeded();
     await noOverflow(page);
   }
   const tooSmallFields = await page.locator('input:not([name="website"]),select').evaluateAll(elements => elements.filter(el => parseFloat(getComputedStyle(el).fontSize) < 16).length);
   expect(tooSmallFields).toBe(0);
+  await page.locator('.footer-bottom').getByRole('link', { name: 'Политика конфиденциальности' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('dialog')).toContainText('Проект для согласования с владельцем');
+  await page.getByRole('dialog').getByRole('button', { name: 'Закрыть документ' }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await page.locator('.studio-footer').screenshot({path: `artifacts/qa/${testInfo.project.name}-footer.png`, animations: 'disabled', style: '.site-header,.mobile-booking,.skip-link{visibility:hidden!important}'});
   expect(errors).toEqual([]);
 });
 
 test('API rejects invalid, oversized, honeypot and cross-origin requests', async ({ request }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-1440', 'API is engine-independent');
-  const valid = { name: 'Тест', phone: '8 (999) 000-00-00', age: '6-8', format: '', website: '' };
+  const valid = { name: 'Тест', phone: '8 (999) 000-00-00', age: '6-8', format: '', website: '', consent: true };
   const response = await request.post('/api/leads', { data: valid, headers: { origin: 'http://localhost:3000' } });
   expect(response.status()).toBe(200);
+  expect((await request.post('/api/leads', { data: { ...valid, consent: false } })).status()).toBe(400);
   expect(await response.json()).toMatchObject({ mode: 'demo', delivered: false });
   expect(response.headers()['cache-control']).toBe('no-store');
   const invalid = await request.post('/api/leads', { data: { ...valid, phone: '123', age: 'unknown' } });

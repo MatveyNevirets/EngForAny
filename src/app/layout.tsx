@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import '@fontsource-variable/manrope';
 import './globals.css';
+import './legal-footer.css';
 import { demoContent } from '@/lib/studio-data';
 
 const allowIndexing = process.env.ALLOW_INDEXING === 'true';

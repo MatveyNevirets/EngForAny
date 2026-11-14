@@ -1,6 +1,6 @@
 import { ageOptions, formatOptions } from './studio-data';
 
-export type LeadInput = { name: string; phone: string; age: string; format: string; website: string };
+export type LeadInput = { name: string; phone: string; age: string; format: string; website: string; consent: boolean };
 export type Lead = Omit<LeadInput, 'website'>;
 export type FieldErrors = Partial<Record<keyof LeadInput, string>>;
 
@@ -23,6 +23,7 @@ export function validateLead(value: unknown): { lead?: Lead; errors: FieldErrors
   if (!ageOptions.some(option => option.value === input.age)) errors.age = 'Выберите возрастную группу или «Для себя».';
   if (!formatOptions.some(option => option.value === input.format)) errors.format = 'Выберите один из предложенных вариантов.';
   if (typeof input.website !== 'string' || input.website.length !== 0) errors.website = 'Не удалось проверить форму. Обновите страницу и попробуйте снова.';
+  if (input.consent !== true) errors.consent = 'Для отправки заявки необходимо согласие на обработку персональных данных.';
   if (Object.keys(errors).length) return { errors };
-  return { lead: { name, phone: phone!, age: input.age as string, format: input.format as string }, errors };
+  return { lead: { name, phone: phone!, age: input.age as string, format: input.format as string, consent: true }, errors };
 }

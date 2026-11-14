@@ -1,3 +1,4 @@
+import { SiteFooter } from '@/components/site-footer';
 import { demoContent as content, verifiedContacts as contacts } from '@/lib/studio-data';
 import { HeroArtwork, Icon, LocalMap } from '@/components/illustrations';
 import { FAQ, LeadForm, MiniLesson, PageEffects, SelectButton, TravelPlanner } from '@/components/interactive';
@@ -38,7 +39,7 @@ export default function Home() {
         <div className="booking-grid"><LeadForm/><aside className="contact-card" id="location" aria-labelledby="contact-heading"><span className="eyebrow">{content.booking.contactEyebrow}</span><h3 id="contact-heading">{content.booking.contactsTitle}</h3><p className="contact-address">{contacts.address}<span>{contacts.city}, микрорайон {contacts.district}</span></p><div className="map-wrap"><LocalMap/><span>{content.booking.mapNote}</span></div><div className="walk-info"><Icon name="route"/><div><strong>{contacts.walkEstimate}</strong><small>{contacts.walkSource}</small></div></div><a className="button button-outline" href={contacts.directionsUrl} target="_blank" rel="noopener noreferrer">{content.booking.route}<Icon name="arrow"/></a><a className="contact-phone" href={contacts.phoneHref}>{contacts.phone}</a><div className="contact-links"><a className="text-link" href={contacts.phoneHref}><Icon name="phone"/>{content.booking.call}</a><a className="text-link" href={contacts.maxUrl} target="_blank" rel="noopener noreferrer"><Icon name="chat"/>{content.booking.max}</a></div></aside></div>
       </div></section>
     </main>
-    <footer className="site-footer container"><Logo/><p>{content.footer.note}<br/><a href="#demo-privacy">{content.footer.privacy}</a></p><a className="back-top text-link" href="#home">{content.footer.top}<Icon name="arrow"/></a></footer>
+    <SiteFooter/>
     <PageEffects/>
   </>;
 }

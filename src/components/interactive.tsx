@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ageOptions, demoContent, formatOptions, verifiedContacts } from '@/lib/studio-data';
 import { validateLead, type FieldErrors, type LeadInput } from '@/lib/lead-validation';
+import { LegalLink } from './legal-documents';
 import { maskRussianPhone } from '@/lib/phone-mask';
 import { Icon, RouteArtwork } from './illustrations';
 
@@ -67,7 +68,7 @@ export function FAQ() {
 
 export function LeadForm() {
   const text = demoContent.booking;
-  const [fields, setFields] = useState<LeadInput>({ name: '', phone: '', age: '', format: '', website: '' });
+  const [fields, setFields] = useState<LeadInput>({ name: '', phone: '', age: '', format: '', website: '', consent: false });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [status, setStatus] = useState<'idle' | 'pending' | 'error' | 'success'>('idle');
   const [message, setMessage] = useState('');
@@ -90,7 +91,7 @@ export function LeadForm() {
     return () => window.removeEventListener('studio:choose', listener);
   }, []);
 
-  function update(key: keyof LeadInput, value: string) {
+  function update(key: keyof LeadInput, value: string | boolean) {
     setFields(previous => ({ ...previous, [key]: value }));
     setErrors(previous => ({ ...previous, [key]: undefined }));
     if (status === 'error') { setMessage(''); setStatus('idle'); }
@@ -113,7 +114,7 @@ export function LeadForm() {
     requestAnimationFrame(() => input.setSelectionRange(position, position));
   }
   function focusError(nextErrors: FieldErrors) {
-    const field = ['name', 'phone', 'age', 'format'].find(key => nextErrors[key as keyof LeadInput]);
+    const field = ['name', 'phone', 'age', 'format', 'consent'].find(key => nextErrors[key as keyof LeadInput]);
     if (field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>(`[name="${field}"]`)?.focus());
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -134,7 +135,7 @@ export function LeadForm() {
       }
       setStatus('success');
       // Discard contact details after successful processing; nothing is persisted.
-      setFields(previous => ({ ...previous, name: '', phone: '', website: '' }));
+      setFields(previous => ({ ...previous, name: '', phone: '', website: '', consent: false }));
       requestAnimationFrame(() => successRef.current?.focus({ preventScroll: true }));
     } catch (error) {
       setStatus('error');
@@ -161,6 +162,7 @@ export function LeadForm() {
       }} required aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'error-phone' : undefined} />{errors.phone && <p className="field-error" id="error-phone">{errors.phone}</p>}</div>
       <div className="form-row"><div className="form-field"><label htmlFor="lead-age">{text.age}</label><select id="lead-age" name="age" value={fields.age} onChange={event => update('age', event.target.value)} required aria-invalid={!!errors.age} aria-describedby={errors.age ? 'error-age' : undefined}><option value="" disabled>Выберите возраст</option>{ageOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{errors.age && <p className="field-error" id="error-age">{errors.age}</p>}</div><div className="form-field"><label htmlFor="lead-format">{text.format}<span>{text.optional}</span></label><select id="lead-format" name="format" value={fields.format} onChange={event => update('format', event.target.value)} aria-invalid={!!errors.format} aria-describedby={errors.format ? 'error-format' : undefined}>{formatOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{errors.format && <p className="field-error" id="error-format">{errors.format}</p>}</div></div>
       <div className="honeypot" aria-hidden="true"><label htmlFor="lead-website">Ваш сайт</label><input id="lead-website" name="website" autoComplete="off" tabIndex={-1} value={fields.website} onChange={event => update('website', event.target.value)} /></div>
+      <div className="consent-field"><div className="consent-row"><input id="lead-consent" name="consent" type="checkbox" checked={fields.consent} onChange={event => update('consent', event.target.checked)} required aria-invalid={!!errors.consent} aria-describedby={errors.consent ? 'error-consent' : 'consent-links'}/><label htmlFor="lead-consent">Я даю согласие на обработку моих персональных данных для рассмотрения заявки и обратной связи.</label></div><div id="consent-links" className="consent-links"><LegalLink kind="consent">Текст согласия</LegalLink><LegalLink kind="privacy">Политика конфиденциальности</LegalLink></div>{errors.consent && <p className="field-error" id="error-consent" role="alert">{errors.consent}</p>}</div>
       <button className="button button-primary submit-button" type="submit" disabled={status === 'pending'}>{status === 'pending' ? text.pending : text.submit}<Icon name="arrow" /></button>
       <p className="form-message" role="alert">{status === 'error' ? message : ''}</p>
       <p className="form-disclaimer">{text.disclaimer}</p><p className="form-consent" id="demo-privacy">{text.consent}</p>
