@@ -59,12 +59,13 @@ test('visual layout and complete demo booking journey', async ({ page }, testInf
   await page.route('**/api/leads', async route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Проверка ошибки: повторите отправку.' }) }), { times: 1 });
   await page.getByRole('button', { name: 'Отправить запрос на знакомство' }).click();
   await expect(page.locator('.form-message[role="alert"]')).toHaveText('Проверка ошибки: повторите отправку.');
-  await expect(page.locator('#lead-phone')).toHaveValue('8 (999) 000-00-00');
+  await expect(page.locator('#lead-phone')).toHaveValue('+7 (999) 000 00 00');
   const request = page.waitForRequest(req => req.url().endsWith('/api/leads') && req.method() === 'POST');
   await page.getByRole('button', { name: 'Отправить запрос на знакомство' }).click();
   const submitted = await request;
   expect(submitted.postDataJSON().phone).toBe('+79990000000');
-  await expect(page.locator('.form-success')).toContainText('Демо: форма сработала. Сообщение в MAX не отправлено');
+  await expect(page.locator('.form-success')).toContainText('Заявка успешно отправлена! Скоро с вами свяжутся.');
+  await expect(page.locator('.form-success')).toContainText('сообщение в MAX не отправлено');
   await expect(page.locator('.form-success')).toBeFocused();
   expect(await page.evaluate(() => localStorage.length)).toBe(0);
   await noOverflow(page);

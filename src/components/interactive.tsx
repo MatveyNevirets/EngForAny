@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ageOptions, demoContent, formatOptions, verifiedContacts } from '@/lib/studio-data';
 import { validateLead, type FieldErrors, type LeadInput } from '@/lib/lead-validation';
+import { maskRussianPhone } from '@/lib/phone-mask';
 import { Icon, RouteArtwork } from './illustrations';
 
 type Selection = { age?: string; format?: string };
@@ -94,6 +95,23 @@ export function LeadForm() {
     setErrors(previous => ({ ...previous, [key]: undefined }));
     if (status === 'error') { setMessage(''); setStatus('idle'); }
   }
+  function updatePhone(input: HTMLInputElement) {
+    const raw = input.value;
+    const caret = input.selectionStart ?? raw.length;
+    let digitsBefore = raw.slice(0, caret).replace(/\D/g, '').length;
+    const digits = raw.replace(/\D/g, '');
+    if (digits && digits[0] !== '7' && digits[0] !== '8') digitsBefore += 1;
+    const formatted = maskRussianPhone(raw);
+    update('phone', formatted);
+    // Position by digits rather than characters, so editing in the middle works.
+    let position = 0, seen = 0;
+    while (position < formatted.length && seen < digitsBefore) {
+      if (/\d/.test(formatted[position])) seen++;
+      position++;
+    }
+    if (caret === raw.length) position = formatted.length;
+    requestAnimationFrame(() => input.setSelectionRange(position, position));
+  }
   function focusError(nextErrors: FieldErrors) {
     const field = ['name', 'phone', 'age', 'format'].find(key => nextErrors[key as keyof LeadInput]);
     if (field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>(`[name="${field}"]`)?.focus());
@@ -129,7 +147,18 @@ export function LeadForm() {
     {status === 'success' ? <div className="form-success" ref={successRef} tabIndex={-1} role="status"><div className="success-icon"><Icon name="check" /></div><h4>{text.success}</h4><p>{text.successDetail}</p><a href={verifiedContacts.maxUrl} target="_blank" rel="noopener noreferrer" className="button button-primary">{text.max}<Icon name="arrow" /></a><button className="text-link" type="button" onClick={() => { setStatus('idle'); requestAnimationFrame(() => headingRef.current?.focus()); }}>{text.another}</button></div> :
     <form ref={formRef} onSubmit={submit} noValidate aria-busy={status === 'pending'}>
       <div className="form-field"><label htmlFor="lead-name">{text.name}</label><input id="lead-name" name="name" autoComplete="given-name" placeholder="Как к вам обращаться?" maxLength={60} value={fields.name} onChange={event => update('name', event.target.value)} required aria-invalid={!!errors.name} aria-describedby={errors.name ? 'error-name' : undefined} />{errors.name && <p className="field-error" id="error-name">{errors.name}</p>}</div>
-      <div className="form-field"><label htmlFor="lead-phone">{text.phone}</label><input id="lead-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 (___) ___-__-__" maxLength={40} value={fields.phone} onChange={event => update('phone', event.target.value)} required aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'error-phone' : undefined} />{errors.phone && <p className="field-error" id="error-phone">{errors.phone}</p>}</div>
+      <div className="form-field"><label htmlFor="lead-phone">{text.phone}</label><input id="lead-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 (999) 999 99 99" maxLength={40} value={fields.phone} onChange={event => updatePhone(event.currentTarget)} onKeyDown={event => {
+        const input = event.currentTarget;
+        let start = input.selectionStart ?? 0;
+        if (start !== input.selectionEnd) return;
+        if (event.key === 'Backspace') {
+          while (start > 0 && !/\d/.test(input.value[start - 1])) start--;
+          input.setSelectionRange(start, start);
+        } else if (event.key === 'Delete') {
+          while (start < input.value.length && !/\d/.test(input.value[start])) start++;
+          input.setSelectionRange(start, start);
+        }
+      }} required aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'error-phone' : undefined} />{errors.phone && <p className="field-error" id="error-phone">{errors.phone}</p>}</div>
       <div className="form-row"><div className="form-field"><label htmlFor="lead-age">{text.age}</label><select id="lead-age" name="age" value={fields.age} onChange={event => update('age', event.target.value)} required aria-invalid={!!errors.age} aria-describedby={errors.age ? 'error-age' : undefined}><option value="" disabled>Выберите возраст</option>{ageOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{errors.age && <p className="field-error" id="error-age">{errors.age}</p>}</div><div className="form-field"><label htmlFor="lead-format">{text.format}<span>{text.optional}</span></label><select id="lead-format" name="format" value={fields.format} onChange={event => update('format', event.target.value)} aria-invalid={!!errors.format} aria-describedby={errors.format ? 'error-format' : undefined}>{formatOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{errors.format && <p className="field-error" id="error-format">{errors.format}</p>}</div></div>
       <div className="honeypot" aria-hidden="true"><label htmlFor="lead-website">Ваш сайт</label><input id="lead-website" name="website" autoComplete="off" tabIndex={-1} value={fields.website} onChange={event => update('website', event.target.value)} /></div>
       <button className="button button-primary submit-button" type="submit" disabled={status === 'pending'}>{status === 'pending' ? text.pending : text.submit}<Icon name="arrow" /></button>
