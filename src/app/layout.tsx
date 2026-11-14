@@ -3,10 +3,11 @@ import '@fontsource-variable/manrope';
 import './globals.css';
 import './legal-footer.css';
 import { demoContent } from '@/lib/studio-data';
+import { publicSiteOrigin } from '@/lib/site-origin';
 
 const allowIndexing = process.env.ALLOW_INDEXING === 'true';
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(publicSiteOrigin()),
   title: demoContent.metadata.title,
   description: demoContent.metadata.description,
   robots: { index: allowIndexing, follow: allowIndexing },

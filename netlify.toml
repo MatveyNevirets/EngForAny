@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "24"
+  ALLOW_INDEXING = "false"
 
 # Netlify detects Next.js and installs its OpenNext adapter automatically.
 # Keep API routes enabled: this project is not a static HTML export.
