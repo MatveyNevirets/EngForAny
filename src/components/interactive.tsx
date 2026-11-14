@@ -70,13 +70,12 @@ export function LeadForm() {
   const text = demoContent.booking;
   const [fields, setFields] = useState<LeadInput>({ name: '', phone: '', age: '', format: '', website: '', consent: false });
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [status, setStatus] = useState<'idle' | 'pending' | 'error' | 'success'>('idle');
+  const [status, setStatus] = useState<'idle' | 'error' | 'success'>('idle');
   const [message, setMessage] = useState('');
   const [selectionNotice, setSelectionNotice] = useState('');
   const headingRef = useRef<HTMLHeadingElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
-  const submitting = useRef(false);
   useEffect(() => {
     const listener = (event: Event) => {
       const selected = (event as CustomEvent<Selection>).detail;
@@ -117,36 +116,21 @@ export function LeadForm() {
     const field = ['name', 'phone', 'age', 'format', 'consent'].find(key => nextErrors[key as keyof LeadInput]);
     if (field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>(`[name="${field}"]`)?.focus());
   }
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current) return;
     const validation = validateLead(fields);
     setErrors(validation.errors); setMessage('');
     if (!validation.lead) { setStatus('error'); setMessage('Проверьте выделенные поля.'); focusError(validation.errors); return; }
-    submitting.current = true; setStatus('pending');
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 12000);
-    try {
-      const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...validation.lead, website: fields.website }), signal: controller.signal });
-      const result = await response.json();
-      if (!response.ok || result.mode !== 'demo' || result.delivered !== false) {
-        if (result.errors) { setErrors(result.errors); focusError(result.errors); }
-        throw new Error(result.message || 'Не удалось проверить заявку. Попробуйте ещё раз.');
-      }
-      setStatus('success');
-      // Discard contact details after successful processing; nothing is persisted.
-      setFields(previous => ({ ...previous, name: '', phone: '', website: '', consent: false }));
-      requestAnimationFrame(() => successRef.current?.focus({ preventScroll: true }));
-    } catch (error) {
-      setStatus('error');
-      setMessage(error instanceof Error && error.name !== 'AbortError' ? error.message : 'Не удалось связаться с сайтом. Данные остались в форме. Попробуйте ещё раз.');
-    } finally { window.clearTimeout(timeout); submitting.current = false; }
+    // Presentation-only booking: no network request and no persistence.
+    setStatus('success');
+    setFields(previous => ({ ...previous, name: '', phone: '', website: '', consent: false }));
+    requestAnimationFrame(() => successRef.current?.focus({ preventScroll: true }));
   }
   return <div className="form-card">
     <h3 ref={headingRef} tabIndex={-1}>{text.formTitle}</h3>
     <p className="selection-notice" role="status">{selectionNotice || 'Выберите возраст — остальное обсудим вместе.'}</p>
-    {status === 'success' ? <div className="form-success" ref={successRef} tabIndex={-1} role="status"><div className="success-icon"><Icon name="check" /></div><h4>{text.success}</h4><p>{text.successDetail}</p><a href={verifiedContacts.maxUrl} target="_blank" rel="noopener noreferrer" className="button button-primary">{text.max}<Icon name="arrow" /></a><button className="text-link" type="button" onClick={() => { setStatus('idle'); requestAnimationFrame(() => headingRef.current?.focus()); }}>{text.another}</button></div> :
-    <form ref={formRef} onSubmit={submit} noValidate aria-busy={status === 'pending'}>
+    {status === 'success' ? <div className="form-success" ref={successRef} tabIndex={-1} role="status"><div className="success-icon"><Icon name="check" /></div><h4>{text.success}</h4><p>{text.successDetail}</p><button className="text-link" type="button" onClick={() => { setStatus('idle'); requestAnimationFrame(() => headingRef.current?.focus()); }}>{text.another}</button></div> :
+    <form ref={formRef} onSubmit={submit} noValidate>
       <div className="form-field"><label htmlFor="lead-name">{text.name}</label><input id="lead-name" name="name" autoComplete="given-name" placeholder="Как к вам обращаться?" maxLength={60} value={fields.name} onChange={event => update('name', event.target.value)} required aria-invalid={!!errors.name} aria-describedby={errors.name ? 'error-name' : undefined} />{errors.name && <p className="field-error" id="error-name">{errors.name}</p>}</div>
       <div className="form-field"><label htmlFor="lead-phone">{text.phone}</label><input id="lead-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 (999) 999 99 99" maxLength={40} value={fields.phone} onChange={event => updatePhone(event.currentTarget)} onKeyDown={event => {
         const input = event.currentTarget;
@@ -163,7 +147,7 @@ export function LeadForm() {
       <div className="form-row"><div className="form-field"><label htmlFor="lead-age">{text.age}</label><select id="lead-age" name="age" value={fields.age} onChange={event => update('age', event.target.value)} required aria-invalid={!!errors.age} aria-describedby={errors.age ? 'error-age' : undefined}><option value="" disabled>Выберите возраст</option>{ageOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{errors.age && <p className="field-error" id="error-age">{errors.age}</p>}</div><div className="form-field"><label htmlFor="lead-format">{text.format}<span>{text.optional}</span></label><select id="lead-format" name="format" value={fields.format} onChange={event => update('format', event.target.value)} aria-invalid={!!errors.format} aria-describedby={errors.format ? 'error-format' : undefined}>{formatOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{errors.format && <p className="field-error" id="error-format">{errors.format}</p>}</div></div>
       <div className="honeypot" aria-hidden="true"><label htmlFor="lead-website">Ваш сайт</label><input id="lead-website" name="website" autoComplete="off" tabIndex={-1} value={fields.website} onChange={event => update('website', event.target.value)} /></div>
       <div className="consent-field"><div className="consent-row"><input id="lead-consent" name="consent" type="checkbox" checked={fields.consent} onChange={event => update('consent', event.target.checked)} required aria-invalid={!!errors.consent} aria-describedby={errors.consent ? 'error-consent' : 'consent-links'}/><label htmlFor="lead-consent">Я даю <LegalLink kind="consent">согласие</LegalLink> на обработку моих персональных данных для рассмотрения заявки и обратной связи.</label></div><div id="consent-links" className="consent-links"><LegalLink kind="privacy">Политика конфиденциальности</LegalLink></div>{errors.consent && <p className="field-error" id="error-consent" role="alert">{errors.consent}</p>}</div>
-      <button className="button button-primary submit-button" type="submit" disabled={status === 'pending'}>{status === 'pending' ? text.pending : text.submit}<Icon name="arrow" /></button>
+      <button className="button button-primary submit-button" type="submit">{text.submit}<Icon name="arrow" /></button>
       <p className="form-message" role="alert">{status === 'error' ? message : ''}</p>
       <p className="form-disclaimer">{text.disclaimer}</p><p className="form-consent" id="demo-privacy">{text.consent}</p>
     </form>}

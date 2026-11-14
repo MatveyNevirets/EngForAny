@@ -19,6 +19,8 @@ test('visual layout and complete demo booking journey', async ({ page }, testInf
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await mkdir('artifacts/qa', { recursive: true });
+  let leadRequests = 0;
+  page.on('request', request => { if (request.url().includes('/api/leads')) leadRequests++; });
   await page.goto('/');
   await page.evaluate(() => document.fonts.ready);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Английский,на котором ребёнок заговорит смелее');
@@ -57,17 +59,10 @@ test('visual layout and complete demo booking journey', async ({ page }, testInf
   await page.locator('#lead-consent').check();
   await page.locator('.booking-grid').screenshot({ path: `artifacts/qa/${testInfo.project.name}-form.png`, animations: 'disabled', style: '.site-header,.mobile-booking,.skip-link{visibility:hidden!important}' });
 
-  // One transient delivery error: values must survive and retry must work.
-  await page.route('**/api/leads', async route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Проверка ошибки: повторите отправку.' }) }), { times: 1 });
   await page.getByRole('button', { name: 'Отправить запрос на знакомство' }).click();
-  await expect(page.locator('.form-message[role="alert"]')).toHaveText('Проверка ошибки: повторите отправку.');
-  await expect(page.locator('#lead-phone')).toHaveValue('+7 (999) 000 00 00');
-  const request = page.waitForRequest(req => req.url().endsWith('/api/leads') && req.method() === 'POST');
-  await page.getByRole('button', { name: 'Отправить запрос на знакомство' }).click();
-  const submitted = await request;
-  expect(submitted.postDataJSON().phone).toBe('+79990000000');
-  await expect(page.locator('.form-success')).toContainText('Заявка успешно отправлена! Скоро с вами свяжутся.');
-  await expect(page.locator('.form-success')).toContainText('сообщение в MAX не отправлено');
+  await expect(page.locator('.form-success')).toContainText('Заявка отправлена. С вами свяжутся!');
+  await expect(page.locator('.form-success')).not.toContainText('Для настоящей записи');
+  expect(leadRequests).toBe(0);
   await expect(page.locator('.form-success')).toBeFocused();
   expect(await page.evaluate(() => localStorage.length)).toBe(0);
   await noOverflow(page);
