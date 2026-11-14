@@ -9,7 +9,13 @@ const json = (body: unknown, status = 200) => NextResponse.json(body, { status, 
 
 export async function POST(request: Request) {
   const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) return json({ message: 'Отправьте форму со страницы студии.' }, 403);
+  // Next can expose its bind address (0.0.0.0) in request.url. The browser's
+  // actual origin uses the incoming Host, or the configured public SITE_URL.
+  const url = new URL(request.url);
+  const expectedOrigin = process.env.SITE_URL
+    ? new URL(process.env.SITE_URL).origin
+    : `${url.protocol}//${request.headers.get('host') || url.host}`;
+  if (origin && origin !== expectedOrigin) return json({ message: 'Отправьте форму со страницы студии.' }, 403);
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) return json({ message: 'Нужен запрос в формате JSON.' }, 415);
   if (Number(request.headers.get('content-length') || 0) > MAX_BODY_BYTES) return json({ message: 'Слишком большой запрос.' }, 413);
   let value: unknown;
